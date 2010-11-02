@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Canabalt Clone</title>
+  <style>
+    body {
+      background: gray;
+    }
+
+    #game {
+      margin: 0 auto;
+      height: 300px;
+      width: 700px;
+      position: relative;
+      background: silver;
+      overflow: hidden;
+    }
+
+    #game .building {
+      position: absolute;
+      bottom: 0;
+      background: black;
+    }
+  </style>
+  <script type="text/javascript">
+    if (!Array.prototype.forEach) {
+      Array.prototype.forEach = function(f) {
+        for (var i = 0; i < this.length; ++i) {
+          f(this[i]);
+        }
+      }
+    }
+
+    Canabalt = function(container, options) {
+      this.options = options || {};
+      this.container = container;
+      this.viewportWidth = this.container.offsetWidth;
+      this.buildings = [];
+      this.initialize();
+    };
+
+    Canabalt.defaultOptions = {
+      fps: 30,
+      initialSpeed: 0.5
+    };
+
+    Canabalt.prototype.readOption = function(option) {
+      return this.options[option] || Canabalt.defaultOptions[option];
+    };
+
+    Canabalt.prototype.initialize = function() {
+      this.speed = this.readOption('initialSpeed');
+      for (var i = 0; i < this.buildings.length; ++i) this.removeBuilding();
+      this.addBuilding(new Canabalt.Building(this));
+      return this;
+    };
+
+    Canabalt.prototype.addBuilding = function(building) {
+      this.buildings.unshift(building);
+      this.container.appendChild(building.element);
+      return this;
+    };
+
+    Canabalt.prototype.removeBuilding = function() {
+      var building = this.buildings.pop();
+      this.container.removeChild(building.element);
+      return this;
+    };
+
+    Canabalt.prototype.start = function() {
+      if (!this.interval) {
+        this.lastCycle = Date.now();
+        var me = this;
+        this.interval = setInterval(function() { me.cycle(); }, 1000 / this.readOption('fps'));
+      }
+      return this;
+    };
+
+    Canabalt.prototype.stop = function() {
+      if (this.interval) {
+        clearInterval(this.interval);
+        delete this.interval;
+      }
+      return this;
+    };
+
+    Canabalt.prototype.cycle = function() {
+      var distance = Math.round((Date.now() - this.lastCycle) * this.speed);
+      this.buildings.forEach(function(b) {
+        b.move(distance).draw();
+      });
+      this.lastCycle = Date.now();
+    };
+
+    Canabalt.Building = function(game, options) {
+      this.game = game;
+
+      this.type = Canabalt.Building.TYPE_NORMAL;
+
+      this.width = 300 + Math.random() * 1000;
+      this.height = 30 + Math.random() * 100;
+      this.gap = 100;
+
+      this.right = -this.width;
+
+      this.endReached = false;
+      this.expired = false;
+
+      this.element = document.createElement('div');
+      this.element.className = 'building';
+      this.element.style.height = String(this.height) + 'px';
+      this.element.style.width = String(this.width) + 'px';
+
+      this.draw();
+    };
+
+    Canabalt.Building.TYPE_NORMAL= 1;
+    Canabalt.Building.TYPE_CRANE = 2;
+    Canabalt.Building.TYPE_DEMOLITION = 3;
+    Canabalt.Building.TYPE_INDOORS = 4;
+
+    Canabalt.Building.prototype.move = function(distance) {
+      this.right += distance;
+
+      // Check if the end of the building + gap was reached and call
+      // an appropiate action (spawn a new building?)
+      if (!this.endReached && (this.right >= this.gap)) {
+        this.game.addBuilding(new Canabalt.Building(this.game));
+        this.endReached = true;
+      }
+
+      // If the building leaves the left side of the screen then
+      // it has expired and has to be removed
+      if (!this.expired && (this.right >= this.game.viewportWidth)) {
+        this.game.removeBuilding();
+        this.expired = true;
+      }
+
+      return this;
+    };
+
+    Canabalt.Building.prototype.draw = function() {
+      if (!this.expired) {
+        this.element.style.right = String(this.right) + 'px';
+      }
+      return this;
+    };
+  </script>
+</head>
+<body>
+  <div id="game">
+  </div>
+  <script type="text/javascript">
+    var game = new Canabalt(document.getElementById('game')).start();
+  </script>
+</body>
+</html>
