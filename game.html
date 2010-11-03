@@ -18,7 +18,7 @@
       height: 324px;
       width: 964px;
       position: relative;
-      background: #4D4D59;
+      background: #B0B0BF;
       overflow: hidden;
     }
 
@@ -35,6 +35,16 @@
       width: 15px;
       background: red;
       z-index: 5;
+    }
+
+    #game .paralaxbg1 {
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: 0;
+      bottom: 0;
+      background: url('paralax-bg-1.png') 0 50px repeat-x;
+      z-index: 2;
     }
   </style>
   <script type="text/javascript">
@@ -65,9 +75,14 @@
     // Map keys bound to jump action
     Canabalt.BIND_JUMP_KEYS = {'88': true, '67': true, '32': true}; // X, C, spacebar
 
+    Canabalt.PARALAX_BG_1_TOP_OFFSET = '100px';
+    Canabalt.PARALAX_BG_1_SPEED = 0.3;
+    Canabalt.PARALAX_BG_2_SPEED = 0.1;
+    Canabalt.PARALAX_FG_SPEED = 3;
+
     Canabalt.defaultOptions = {
       fps: 50,
-      initialSpeed: 0.2,
+      initialSpeed: 0.3,
       acceleration: 0.0001,
       jumpImpulse: 5,
       gravity: 0.15,
@@ -82,12 +97,19 @@
       // Reset speed
       this.speed = this.readOption('initialSpeed');
 
+      // Runner variables
+      this.airborne = false;
+      this.jumping = false;
+      this.ySpeed = 0;
+      this.y = 0;
+
       // Copy some options to object space for quicker access
       this.acceleration = this.readOption('acceleration');
       this.jumpImpulse = this.readOption('jumpImpulse');
       this.gravity = this.readOption('gravity');
       this.leftOffset = this.readOption('leftOffset');
 
+      // Pointer to the building the runner is currently "stepping" on
       this.currentBuilding = null;
 
       // Create runner DIV
@@ -97,6 +119,15 @@
         this.runner.style.left = String(this.leftOffset) + 'px';
         this.container.appendChild(this.runner);
       }
+
+      // First paralax background
+      if (!this.paralaxBg1) {
+        this.paralaxBg1 = document.createElement('div');
+        this.paralaxBg1.className = 'paralaxbg1';
+        this.container.appendChild(this.paralaxBg1);
+      }
+
+      this.paralaxBg1Offset = 0;
 
       // Remove all buildings
       for (var i = 0; i < this.buildings.length; ++i) this.removeBuilding();
@@ -112,12 +143,6 @@
         // Initialize cycle clock and timer
         this.lastCycle = Date.now();
         this.elapsed = 0;
-
-        // Runner variables
-        this.airborne = false;
-        this.jumping = false;
-        this.ySpeed = 0;
-        this.y = 0;
 
         this.startInputCapture();
 
@@ -178,7 +203,7 @@
     };
 
     Canabalt.prototype.startJump = function() {
-      if (!this.airborne) {
+      if (!this.airborne && !this.jumping) {
         this.airborne = true;
         this.jumping = true;
         this.ySpeed = this.jumpImpulse;
@@ -189,6 +214,8 @@
       if (this.airborne && this.jumping) {
         this.jumping = false;
         if (this.ySpeed > 0) this.ySpeed = 0;
+      } else if (this.jumping) {
+        this.jumping = false;
       }
     };
 
@@ -200,6 +227,9 @@
 
       // Draw runner
       this.runner.style.bottom = String(Math.round(this.y)) + 'px';
+
+      // Draw paralax
+      this.paralaxBg1.style.backgroundPosition = String(Math.round(this.paralaxBg1Offset)) + 'px ' + Canabalt.PARALAX_BG_1_TOP_OFFSET;
     };
 
     Canabalt.prototype.scroll = function(distance) {
@@ -238,6 +268,9 @@
 
       // Move buildings
       this.scroll(distance);
+
+      // Move paralax
+      this.paralaxBg1Offset -= distance * Canabalt.PARALAX_BG_1_SPEED;
 
       // Check if we need to redraw
       if (this.elapsed > this.mbf) {
@@ -323,7 +356,7 @@
   <div id="game">
   </div>
   <script type="text/javascript">
-    var game = new Canabalt(document.getElementById('game'), {fps: 30}).start();
+    var game = new Canabalt(document.getElementById('game'), {fps: 40}).start();
   </script>
 </body>
 </html>
