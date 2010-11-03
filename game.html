@@ -38,7 +38,7 @@
     #game .building {
       position: absolute;
       bottom: 0;
-      background: url('building-top.png') left top repeat-x, url('windows.png') left 12px;
+      background: url('building-top.png') left top repeat-x, url('windows.png') left 90px;
       z-index: 3;
     }
 
@@ -58,6 +58,19 @@
       bottom: 0;
       background: url('paralax-bg-1.png') 0 50px repeat-x;
       z-index: 2;
+    }
+
+    #game .distance {
+      position: absolute;
+      top: 5px;
+      right: 5px;
+      font-family: sans-serif;
+      font-size: 15px;
+      font-weight: bolder;
+      color: white;
+      text-shadow: 2px 2px 0 black;
+      text-align: right;
+      z-index: 7;
     }
 
     a {
@@ -100,6 +113,8 @@
     
     // Map keys bound to jump action
     Canabalt.BIND_JUMP_KEYS = {'88': true, '67': true, '32': true}; // X, C, spacebar
+
+    Canabalt.DISTANCE_TO_METERS_COEFFICIENT = 0.055;
 
     Canabalt.PARALAX_BG_1_TOP_OFFSET = '100px';
     Canabalt.PARALAX_BG_1_SPEED = 0.3;
@@ -160,6 +175,13 @@
         this.paralaxBg1 = document.createElement('div');
         this.paralaxBg1.className = 'paralaxbg1';
         this.container.appendChild(this.paralaxBg1);
+      }
+
+      // First paralax background
+      if (!this.distanceCounter) {
+        this.distanceCounter = document.createElement('div');
+        this.distanceCounter.className = 'distance';
+        this.container.appendChild(this.distanceCounter);
       }
 
       this.paralaxBg1Offset = 0;
@@ -266,11 +288,13 @@
 
       // Draw runner
       this.runner.style.bottom = String(Math.round(this.y)) + 'px';
-
       this.runner.style.backgroundPosition = String(-this.runnerFrame * Canabalt.RUNNER_WIDTH) + 'px top';
 
       // Draw paralax
       this.paralaxBg1.style.backgroundPosition = String(Math.round(this.paralaxBg1Offset)) + 'px ' + Canabalt.PARALAX_BG_1_TOP_OFFSET;
+
+      // Draw distance counter
+      this.distanceCounter.innerHTML = String(Math.round(this.distance * Canabalt.DISTANCE_TO_METERS_COEFFICIENT)) + 'm';
     };
 
     Canabalt.prototype.scroll = function(distance) {
@@ -336,8 +360,8 @@
 
       this.type = Canabalt.Building.TYPE_NORMAL;
 
-      this.width = 300 + Math.random() * 500;
-      this.height = 30 + Math.random() * 100;
+      this.width = 300 + Math.random() * 1000;
+      this.height = 30 + Math.random() * 150;
       this.gap = 100;
       this.totalWidth = this.width + this.gap;
 
