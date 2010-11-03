@@ -31,7 +31,6 @@
 
     #game .runner {
       position: absolute;
-      left: 50px;
       height: 30px;
       width: 15px;
       background: red;
@@ -71,7 +70,8 @@
       initialSpeed: 0.2,
       acceleration: 0.0001,
       jumpImpulse: 5,
-      gravity: 0.1
+      gravity: 0.15,
+      leftOffset: 50
     };
 
     Canabalt.prototype.readOption = function(option) {
@@ -86,11 +86,15 @@
       this.acceleration = this.readOption('acceleration');
       this.jumpImpulse = this.readOption('jumpImpulse');
       this.gravity = this.readOption('gravity');
+      this.leftOffset = this.readOption('leftOffset');
+
+      this.currentBuilding = null;
 
       // Create runner DIV
       if (!this.runner) {
         this.runner = document.createElement('div');
         this.runner.className = 'runner';
+        this.runner.style.left = String(this.leftOffset) + 'px';
         this.container.appendChild(this.runner);
       }
 
@@ -221,8 +225,13 @@
       if (this.airborne) {
         this.y += this.ySpeed;
         this.ySpeed -= this.gravity;
-        if (this.y <= 0) {
-          this.y = 0;
+
+        //var currentBuilding = this.currentBuilding();
+        var h = this.currentBuilding ? this.currentBuilding.height : 0;
+
+        if (this.y <= h) {
+          this.y = h;
+          this.ySpeed = 0;
           this.airborne = false;
         }
       }
@@ -244,14 +253,18 @@
 
       this.type = Canabalt.Building.TYPE_NORMAL;
 
-      this.width = 300 + Math.random() * 100;
+      this.width = 300 + Math.random() * 500;
       this.height = 30 + Math.random() * 100;
       this.gap = 100;
+      this.totalWidth = this.width + this.gap;
 
-      this.right = -this.width;
+      this.left = this.game.viewportWidth;
 
       this.endReached = false;
       this.expired = false;
+
+      this.in = false;
+      this.out = false;
 
       this.element = document.createElement('div');
       this.element.className = 'building';
@@ -267,18 +280,30 @@
     Canabalt.Building.TYPE_INDOORS = 4;
 
     Canabalt.Building.prototype.move = function(distance) {
-      this.right += distance;
+      this.left -= distance;
+
+      // Check if this is now the current building
+      if (this.in) {
+        if (!this.out && this.left + this.width < this.game.leftOffset) {
+          this.game.currentBuilding = null;
+          this.game.airborne = true;
+          this.out = true;
+        }
+      } else if (this.left <= this.game.leftOffset) {
+        this.game.currentBuilding = this;
+        this.in = true;
+      }
 
       // Check if the end of the building + gap was reached and call
       // an appropiate action (spawn a new building?)
-      if (!this.endReached && (this.right >= this.gap)) {
+      if (!this.endReached && (this.left + this.totalWidth <= this.game.viewportWidth)) {
         this.game.addBuilding(new Canabalt.Building(this.game));
         this.endReached = true;
       }
 
       // If the building leaves the left side of the screen then
       // it has expired and has to be removed
-      if (!this.expired && (this.right >= this.game.viewportWidth)) {
+      if (!this.expired && (this.totalWidth + this.left <= 0)) {
         this.game.removeBuilding();
         this.expired = true;
       }
@@ -288,7 +313,7 @@
 
     Canabalt.Building.prototype.draw = function() {
       if (!this.expired) {
-        this.element.style.right = String(this.right) + 'px';
+        this.element.style.left = String(this.left) + 'px';
       }
       return this;
     };
