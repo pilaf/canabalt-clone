@@ -10,14 +10,27 @@
       padding-top: 45px;
     }
 
-    #game {
+    #wrapper {
+      margin: 0 auto;
+      width: 976px;
+    }
+
+    #frame {
       border: 6px solid #35353D;
       border-right-color: #45454F;
       border-bottom-color: #646A7D;
-      margin: 0 auto;
+      background: black;
       height: 324px;
-      width: 964px;
       position: relative;
+      margin-bottom: 15px;
+    }
+
+    #game {
+      position: absolute;
+      left: 2px;
+      right: 2px;
+      top: 2px;
+      bottom: 2px;
       background: #B0B0BF;
       overflow: hidden;
     }
@@ -31,9 +44,9 @@
 
     #game .runner {
       position: absolute;
-      height: 30px;
-      width: 15px;
-      background: red;
+      height: 38px;
+      width: 24px;
+      background: url('runner.png');
       z-index: 5;
     }
 
@@ -45,6 +58,19 @@
       bottom: 0;
       background: url('paralax-bg-1.png') 0 50px repeat-x;
       z-index: 2;
+    }
+
+    a {
+      background: #35353C;
+      color: #4D4D59;
+      padding: 5px 7px;
+      font-family: sans-serif;
+      font-size: 14px;
+      font-weight: bold;
+      text-decoration: none;
+      -moz-border-radius: 5px;
+      -webkit-border-radius: 5px;
+      border-radius: 5px;
     }
   </style>
   <script type="text/javascript">
@@ -80,9 +106,14 @@
     Canabalt.PARALAX_BG_2_SPEED = 0.1;
     Canabalt.PARALAX_FG_SPEED = 3;
 
+    Canabalt.RUNNER_WIDTH = 24;
+    Canabalt.RUNNER_HEIGHT = 38;
+    Canabalt.RUNNER_RUNNING_FRAMECOUNT = 16;
+    Canabalt.RUNNER_RUNNING_CHANGE_FRAME_DISTANCE = 15;
+
     Canabalt.defaultOptions = {
       fps: 50,
-      initialSpeed: 0.3,
+      initialSpeed: 0.2,
       acceleration: 0.0001,
       jumpImpulse: 5,
       gravity: 0.15,
@@ -94,8 +125,9 @@
     };
 
     Canabalt.prototype.initialize = function() {
-      // Reset speed
+      // Reset speed and traveled distance
       this.speed = this.readOption('initialSpeed');
+      this.distance = 0;
 
       // Runner variables
       this.airborne = false;
@@ -120,6 +152,9 @@
         this.container.appendChild(this.runner);
       }
 
+      this.runnerFrame = 0;
+      this.runnerRunAnimationDistance = 0;
+
       // First paralax background
       if (!this.paralaxBg1) {
         this.paralaxBg1 = document.createElement('div');
@@ -138,8 +173,12 @@
       return this;
     };
 
+    Canabalt.prototype.paused = function() {
+      return !this.interval;
+    };
+
     Canabalt.prototype.start = function() {
-      if (!this.interval) {
+      if (this.paused()) {
         // Initialize cycle clock and timer
         this.lastCycle = Date.now();
         this.elapsed = 0;
@@ -154,7 +193,7 @@
     };
 
     Canabalt.prototype.stop = function() {
-      if (this.interval) {
+      if (!this.paused()) {
         this.stopInputCapture();
 
         // Stop game interval
@@ -228,6 +267,8 @@
       // Draw runner
       this.runner.style.bottom = String(Math.round(this.y)) + 'px';
 
+      this.runner.style.backgroundPosition = String(-this.runnerFrame * Canabalt.RUNNER_WIDTH) + 'px top';
+
       // Draw paralax
       this.paralaxBg1.style.backgroundPosition = String(Math.round(this.paralaxBg1Offset)) + 'px ' + Canabalt.PARALAX_BG_1_TOP_OFFSET;
     };
@@ -248,6 +289,10 @@
       // Calculate how much we moved this cycle
       var distance = Math.round(elapsed * this.speed);
 
+      // Increment the total distance ran
+      this.distance += distance;
+      this.runnerRunAnimationDistance += distance;
+
       // Increase speed
       this.speed += this.acceleration;
 
@@ -256,7 +301,6 @@
         this.y += this.ySpeed;
         this.ySpeed -= this.gravity;
 
-        //var currentBuilding = this.currentBuilding();
         var h = this.currentBuilding ? this.currentBuilding.height : 0;
 
         if (this.y <= h) {
@@ -271,6 +315,12 @@
 
       // Move paralax
       this.paralaxBg1Offset -= distance * Canabalt.PARALAX_BG_1_SPEED;
+
+      // Set runner animation frame
+      if (this.runnerRunAnimationDistance > Canabalt.RUNNER_RUNNING_CHANGE_FRAME_DISTANCE) {
+        this.runnerRunAnimationDistance = 0;
+        ++this.runnerFrame;
+      }
 
       // Check if we need to redraw
       if (this.elapsed > this.mbf) {
@@ -353,7 +403,11 @@
   </script>
 </head>
 <body>
-  <div id="game">
+  <div id="wrapper">
+    <div id="frame">
+      <div id="game"></div>
+    </div>
+    <a href="#" onclick="if (game.paused()) { game.start(); this.innerHTML = 'Pause'; } else { game.stop(); this.innerHTML = 'Continue'; }; return false;">Pause</a>
   </div>
   <script type="text/javascript">
     var game = new Canabalt(document.getElementById('game'), {fps: 40}).start();
