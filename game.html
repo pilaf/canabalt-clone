@@ -50,14 +50,23 @@
       z-index: 5;
     }
 
-    #game .paralaxbg1 {
+    #game .paralaxbg1, #game .paralaxbg2 {
       position: absolute;
       left: 0;
       right: 0;
       top: 0;
       bottom: 0;
-      background: url('paralax-bg-1.png') 0 50px repeat-x;
+      background-repeat: repeat-x;
+    }
+
+    #game .paralaxbg1 {
+      background-image: url('paralax-bg-1.png');
       z-index: 2;
+    }
+
+    #game .paralaxbg2 {
+      background-image: url('paralax-bg-2.png');
+      z-index: 1;
     }
 
     #game .distance {
@@ -118,11 +127,15 @@
 
     Canabalt.PARALAX_BG_1_TOP_OFFSET = '100px';
     Canabalt.PARALAX_BG_1_SPEED = 0.3;
-    Canabalt.PARALAX_BG_2_SPEED = 0.1;
+
+    Canabalt.PARALAX_BG_2_TOP_OFFSET = '100px';
+    Canabalt.PARALAX_BG_2_SPEED = 0.2;
+
     Canabalt.PARALAX_FG_SPEED = 3;
 
     Canabalt.RUNNER_WIDTH = 24;
     Canabalt.RUNNER_HEIGHT = 38;
+    Canabalt.RUNNER_X_OFFSET_COEFFICIENT = 50;
     Canabalt.RUNNER_RUNNING_FRAMECOUNT = 16;
     Canabalt.RUNNER_RUNNING_CHANGE_FRAME_DISTANCE = 15;
 
@@ -131,8 +144,7 @@
       initialSpeed: 0.2,
       acceleration: 0.0001,
       jumpImpulse: 5,
-      gravity: 0.15,
-      leftOffset: 50
+      gravity: 0.15
     };
 
     Canabalt.prototype.readOption = function(option) {
@@ -154,7 +166,6 @@
       this.acceleration = this.readOption('acceleration');
       this.jumpImpulse = this.readOption('jumpImpulse');
       this.gravity = this.readOption('gravity');
-      this.leftOffset = this.readOption('leftOffset');
 
       // Pointer to the building the runner is currently "stepping" on
       this.currentBuilding = null;
@@ -163,7 +174,6 @@
       if (!this.runner) {
         this.runner = document.createElement('div');
         this.runner.className = 'runner';
-        this.runner.style.left = String(this.leftOffset) + 'px';
         this.container.appendChild(this.runner);
       }
 
@@ -176,15 +186,22 @@
         this.paralaxBg1.className = 'paralaxbg1';
         this.container.appendChild(this.paralaxBg1);
       }
+      this.paralaxBg1Offset = 0;
 
-      // First paralax background
+      // Second paralax background
+      if (!this.paralaxBg2) {
+        this.paralaxBg2 = document.createElement('div');
+        this.paralaxBg2.className = 'paralaxbg2';
+        this.container.appendChild(this.paralaxBg2);
+      }
+      this.paralaxBg2Offset = 0;
+
+      // Distance counter
       if (!this.distanceCounter) {
         this.distanceCounter = document.createElement('div');
         this.distanceCounter.className = 'distance';
         this.container.appendChild(this.distanceCounter);
       }
-
-      this.paralaxBg1Offset = 0;
 
       // Remove all buildings
       for (var i = 0; i < this.buildings.length; ++i) this.removeBuilding();
@@ -288,19 +305,15 @@
 
       // Draw runner
       this.runner.style.bottom = String(Math.round(this.y)) + 'px';
+      this.runner.style.left = String(Math.round(this.x)) + 'px';
       this.runner.style.backgroundPosition = String(-this.runnerFrame * Canabalt.RUNNER_WIDTH) + 'px top';
 
       // Draw paralax
       this.paralaxBg1.style.backgroundPosition = String(Math.round(this.paralaxBg1Offset)) + 'px ' + Canabalt.PARALAX_BG_1_TOP_OFFSET;
+      this.paralaxBg2.style.backgroundPosition = String(Math.round(this.paralaxBg2Offset)) + 'px ' + Canabalt.PARALAX_BG_2_TOP_OFFSET;
 
       // Draw distance counter
       this.distanceCounter.innerHTML = String(Math.round(this.distance * Canabalt.DISTANCE_TO_METERS_COEFFICIENT)) + 'm';
-    };
-
-    Canabalt.prototype.scroll = function(distance) {
-      for (var i = 0; i < this.buildings.length; ++i) {
-        this.buildings[i].move(distance);
-      }
     };
 
     Canabalt.prototype.cycle = function() {
@@ -320,6 +333,9 @@
       // Increase speed
       this.speed += this.acceleration;
 
+      // Runner's x offset is square root of the speed times a multiplier
+      this.x = Math.sqrt(this.speed) * Canabalt.RUNNER_X_OFFSET_COEFFICIENT;
+
       // Check jump
       if (this.airborne) {
         this.y += this.ySpeed;
@@ -335,10 +351,13 @@
       }
 
       // Move buildings
-      this.scroll(distance);
+      for (var i = 0; i < this.buildings.length; ++i) {
+        this.buildings[i].move(distance);
+      }
 
       // Move paralax
       this.paralaxBg1Offset -= distance * Canabalt.PARALAX_BG_1_SPEED;
+      this.paralaxBg2Offset -= distance * Canabalt.PARALAX_BG_2_SPEED;
 
       // Set runner animation frame
       if (this.runnerRunAnimationDistance > Canabalt.RUNNER_RUNNING_CHANGE_FRAME_DISTANCE) {
@@ -361,8 +380,8 @@
       this.type = Canabalt.Building.TYPE_NORMAL;
 
       this.width = 300 + Math.random() * 1000;
-      this.height = 30 + Math.random() * 150;
-      this.gap = 100;
+      this.height = 30 + Math.random() * 100;
+      this.gap = 100 + Math.random() * 100;
       this.totalWidth = this.width + this.gap;
 
       this.left = this.game.viewportWidth;
@@ -391,12 +410,12 @@
 
       // Check if this is now the current building
       if (this.in) {
-        if (!this.out && this.left + this.width < this.game.leftOffset) {
+        if (!this.out && this.left + this.width < this.game.x) {
           this.game.currentBuilding = null;
           this.game.airborne = true;
           this.out = true;
         }
-      } else if (this.left <= this.game.leftOffset) {
+      } else if (this.left <= this.game.x) {
         this.game.currentBuilding = this;
         this.in = true;
       }
@@ -435,6 +454,8 @@
   </div>
   <script type="text/javascript">
     var game = new Canabalt(document.getElementById('game'), {fps: 40}).start();
+    //var a = new Audio('theme.ogg');
+    //a.play();
   </script>
 </body>
 </html>
