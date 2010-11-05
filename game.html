@@ -23,6 +23,7 @@
       height: 324px;
       position: relative;
       margin-bottom: 15px;
+      overflow: hidden;
     }
 
     #game {
@@ -35,20 +36,20 @@
       overflow: hidden;
     }
 
-    #game .building {
-      position: absolute;
-      bottom: 0;
-      background: #B0B0BF url('windows.png');
-      background: url('building-top.png') left top repeat-x, url('windows.png') left 90px;
-      z-index: 3;
-    }
-
     #game .runner {
       position: absolute;
       height: 38px;
       width: 24px;
       background: url('runner.png');
       z-index: 5;
+    }
+
+    #game .building {
+      position: absolute;
+      bottom: 0;
+      background: #B0B0BF url('windows.png');
+      background: url('building-top.png') left top repeat-x, url('windows.png') left 90px;
+      z-index: 3;
     }
 
     #game .paralaxbg1, #game .paralaxbg2 {

@@ -26,7 +26,6 @@ Canabalt = function(container, options) {
 };
 
 // Cap game at 90 cycles per second
-// FPS can't get higher than this
 Canabalt.CYCLES_PER_SECOND = 90;
 
 // Map keys bound to jump action
@@ -42,9 +41,12 @@ Canabalt.PARALAX_BG_2_SPEED = 0.2;
 
 Canabalt.PARALAX_FG_SPEED = 3;
 
+Canabalt.SHAKE_START = 3000;
+Canabalt.SHAKE_AMPLITUDE = 20;
+
 Canabalt.RUNNER_WIDTH = 24;
 Canabalt.RUNNER_HEIGHT = 38;
-Canabalt.RUNNER_X_OFFSET_COEFFICIENT = 50;
+Canabalt.RUNNER_X_OFFSET_COEFFICIENT = 100;
 Canabalt.RUNNER_RUNNING_FRAMECOUNT = 16;
 Canabalt.RUNNER_RUNNING_CHANGE_FRAME_DISTANCE = 15;
 
@@ -65,6 +67,8 @@ Canabalt.prototype.initialize = function() {
   this.speed = this.readOption('initialSpeed');
   this.distance = 0;
 
+  this.shakeDuration = Canabalt.SHAKE_START;
+  
   // Runner variables
   this.airborne = false;
   this.jumping = false;
@@ -81,9 +85,7 @@ Canabalt.prototype.initialize = function() {
 
   // Create runner DIV
   if (!this.runner) {
-    this.runner = document.createElement('div');
-    this.runner.className = 'runner';
-    this.container.appendChild(this.runner);
+    this.runner = this.createDiv('runner');
   }
 
   this.runnerFrame = 0;
@@ -91,34 +93,40 @@ Canabalt.prototype.initialize = function() {
 
   // First paralax background
   if (!this.paralaxBg1) {
-    this.paralaxBg1 = document.createElement('div');
-    this.paralaxBg1.className = 'paralaxbg1';
-    this.container.appendChild(this.paralaxBg1);
+    this.paralaxBg1 = this.createDiv('paralaxbg1');
   }
   this.paralaxBg1Offset = 0;
 
   // Second paralax background
   if (!this.paralaxBg2) {
-    this.paralaxBg2 = document.createElement('div');
-    this.paralaxBg2.className = 'paralaxbg2';
-    this.container.appendChild(this.paralaxBg2);
+    this.paralaxBg2 = this.createDiv('paralaxbg2');
   }
   this.paralaxBg2Offset = 0;
 
   // Distance counter
   if (!this.distanceCounter) {
-    this.distanceCounter = document.createElement('div');
-    this.distanceCounter.className = 'distance';
-    this.container.appendChild(this.distanceCounter);
+    this.distanceCounter = this.createDiv('distance');
   }
 
   // Remove all buildings
-  for (var i = 0; i < this.buildings.length; ++i) this.removeBuilding();
+  while (this.buildings.length) this.removeFirstBuilding();
 
   // Place the first building
   this.addBuilding(new Canabalt.Building(this));
 
+  // Provide the viewport with an actual height property so that
+  // absolute elements within it are positioned relative to its height
+  // rather than its ancestor container
+  this.container.style.height = String(this.container.offsetHeight) + 'px';
+
   return this;
+};
+
+Canabalt.prototype.createDiv = function(className) {
+  var div = document.createElement('div');
+  div.className = className;
+  this.container.appendChild(div);
+  return div;
 };
 
 Canabalt.prototype.paused = function() {
@@ -156,7 +164,8 @@ Canabalt.prototype.addBuilding = function(building) {
   this.container.appendChild(building.element);
 };
 
-Canabalt.prototype.removeBuilding = function() {
+Canabalt.prototype.removeFirstBuilding = function() {
+  console.log('a');
   var building = this.buildings.pop();
   this.container.removeChild(building.element);
 };
@@ -206,6 +215,17 @@ Canabalt.prototype.endJump = function() {
   }
 };
 
+Canabalt.prototype.shake = function(duration) {
+  this.shakeDuration = duration;
+};
+
+// In order to prevent setting the top offset of the viewport in each
+// frame in which there is no shaking, this is a separate method from draw()
+// and only called when the shaking stops
+Canabalt.prototype.staightenViewport = function() {
+  this.container.style.top = null;
+};
+
 Canabalt.prototype.draw = function() {
   // Draw buildings
   for (var i = 0; i < this.buildings.length; ++i) {
@@ -223,6 +243,12 @@ Canabalt.prototype.draw = function() {
 
   // Draw distance counter
   this.distanceCounter.innerHTML = String(Math.round(this.distance * Canabalt.DISTANCE_TO_METERS_COEFFICIENT)) + 'm';
+
+  // Since shaking the screen is mostly a random process that doesn't affect gameplay,
+  // calculate the shaking offset when drawing a frame instead of each cycle
+  if (this.shakeDuration) {
+    this.container.style.top = String(Math.round(Math.random() * Canabalt.SHAKE_AMPLITUDE)) + 'px';
+  }
 };
 
 Canabalt.prototype.cycle = function() {
@@ -267,6 +293,15 @@ Canabalt.prototype.cycle = function() {
   // Move paralax
   this.paralaxBg1Offset -= distance * Canabalt.PARALAX_BG_1_SPEED;
   this.paralaxBg2Offset -= distance * Canabalt.PARALAX_BG_2_SPEED;
+
+  // Shake it baby
+  if (this.shakeDuration) {
+    this.shakeDuration -= elapsed;
+    if (this.shakeDuration < 0) {
+      this.shakeDuration = 0;
+      this.staightenViewport();
+    }
+  }
 
   // Set runner animation frame
   if (this.runnerRunAnimationDistance > Canabalt.RUNNER_RUNNING_CHANGE_FRAME_DISTANCE) {
@@ -339,7 +374,7 @@ Canabalt.Building.prototype.move = function(distance) {
   // If the building leaves the left side of the screen then
   // it has expired and has to be removed
   if (!this.expired && (this.totalWidth + this.left <= 0)) {
-    this.game.removeBuilding();
+    this.game.removeFirstBuilding();
     this.expired = true;
   }
 
