@@ -165,7 +165,6 @@ Canabalt.prototype.addBuilding = function(building) {
 };
 
 Canabalt.prototype.removeFirstBuilding = function() {
-  console.log('a');
   var building = this.buildings.pop();
   this.container.removeChild(building.element);
 };
