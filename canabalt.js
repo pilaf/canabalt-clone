@@ -1,11 +1,3 @@
-if (!Array.prototype.forEach) {
-  Array.prototype.forEach = function(f) {
-    for (var i = 0; i < this.length; ++i) {
-      f(this[i]);
-    }
-  };
-}
-
 // Opera doesn't implement Date.now
 if (!Date.now) {
   Date.now = function() {
@@ -47,6 +39,10 @@ Canabalt.SHAKE_AMPLITUDE = 20;
 
 Canabalt.RUNNER_WIDTH = 24;
 Canabalt.RUNNER_HEIGHT = 38;
+
+Canabalt.RUNNER_JUMPING_WIDTH = 28;
+Canabalt.RUNNER_FALLING_ANIMATION_FREQ = 6; // Change falling frame every n cycles
+
 Canabalt.RUNNER_X_OFFSET_COEFFICIENT = 100;
 Canabalt.RUNNER_RUNNING_FRAMECOUNT = 16;
 Canabalt.RUNNER_RUNNING_CHANGE_FRAME_DISTANCE = 15;
@@ -55,7 +51,7 @@ Canabalt.defaultOptions = {
   fps: 50,
   initialSpeed: 0.2,
   acceleration: 0.0001,
-  jumpImpulse: 5,
+  jumpImpulse: 5.5,
   gravity: 0.15
 };
 
@@ -64,6 +60,9 @@ Canabalt.prototype.readOption = function(option) {
 };
 
 Canabalt.prototype.initialize = function() {
+  // Reset cycle counter
+  this.cycles = 0;
+
   // Reset speed and traveled distance
   this.speed = this.readOption('initialSpeed');
   this.distance = 0;
@@ -273,7 +272,15 @@ Canabalt.prototype.draw = function() {
   // Draw runner
   this.runner.style.bottom = String(Math.round(this.y)) + 'px';
   this.runner.style.left = String(Math.round(this.x)) + 'px';
-  this.runner.style.backgroundPosition = String(-this.runnerFrame * Canabalt.RUNNER_WIDTH) + 'px top';
+
+  // NOTE: it kinda sucks that we're changing the guy's width for every frame here...
+  if (this.airborne) {
+    this.runner.style.width = String(Canabalt.RUNNER_JUMPING_WIDTH) + 'px';
+    this.runner.style.backgroundPosition = String(-this.runnerFrame * Canabalt.RUNNER_JUMPING_WIDTH) + 'px bottom';
+  } else {
+    this.runner.style.width = String(Canabalt.RUNNER_WIDTH) + 'px';
+    this.runner.style.backgroundPosition = String(-this.runnerFrame * Canabalt.RUNNER_WIDTH) + 'px top';
+  }
 
   // Draw paralax
   this.paralaxBg1.style.backgroundPosition = String(Math.round(this.paralaxBg1Offset)) + 'px ' + Canabalt.PARALAX_BG_1_TOP_OFFSET;
@@ -293,7 +300,11 @@ Canabalt.prototype.draw = function() {
   }
 };
 
+// This is where most the game logic happens
 Canabalt.prototype.cycle = function() {
+  // Increment cycles counter
+  this.cycles++;
+
   // Calculate time elapsed since last game cycle
   var elapsed = Date.now() - this.lastCycle;
 
@@ -305,7 +316,6 @@ Canabalt.prototype.cycle = function() {
 
   // Increment the total distance ran
   this.distance += distance;
-  this.runnerRunAnimationDistance += distance;
 
   // Increase speed
   this.speed += this.acceleration;
@@ -315,6 +325,22 @@ Canabalt.prototype.cycle = function() {
 
   // Check jump
   if (this.airborne) {
+    // Calculate which jumping frame to display based on
+    // vertical speed
+    if (this.ySpeed > this.jumpImpulse * 0.66) {
+      this.runnerFrame = 0;
+    } else if (this.ySpeed > this.jumpImpulse * 0.33) {
+      this.runnerFrame = 1;
+    } else if (this.ySpeed > this.jumpImpulse * 0.1) {
+      this.runnerFrame = 2;
+    } else if (!this.falling && this.ySpeed <= 0) {
+      this.falling = true;
+      this.runnerFrame = 3;
+    } else if (this.cycles % Canabalt.RUNNER_FALLING_ANIMATION_FREQ == 0) {
+      this.runnerFrame++;
+      if (this.runnerFrame == 11) this.runnerFrame = 3;
+    }
+
     this.y += this.ySpeed;
     this.ySpeed -= this.gravity;
 
@@ -324,6 +350,16 @@ Canabalt.prototype.cycle = function() {
       this.y = h;
       this.ySpeed = 0;
       this.airborne = false;
+      this.falling = false;
+    }
+  } else {
+
+    this.runnerRunAnimationDistance += distance;
+
+    // Set runner animation frame
+    if (this.runnerRunAnimationDistance > Canabalt.RUNNER_RUNNING_CHANGE_FRAME_DISTANCE) {
+      this.runnerRunAnimationDistance = 0;
+      ++this.runnerFrame;
     }
   }
 
@@ -351,12 +387,6 @@ Canabalt.prototype.cycle = function() {
       this.shakeDuration = 0;
       this.staightenViewport();
     }
-  }
-
-  // Set runner animation frame
-  if (this.runnerRunAnimationDistance > Canabalt.RUNNER_RUNNING_CHANGE_FRAME_DISTANCE) {
-    this.runnerRunAnimationDistance = 0;
-    ++this.runnerFrame;
   }
 
   // Check if we need to redraw
