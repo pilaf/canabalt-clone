@@ -71,6 +71,23 @@
       z-index: 1;
     }
 
+    #game .paralaxbeam1, #game .paralaxbeam2 {
+      position: absolute;
+      top: 0;
+      height: 100%;
+      z-index: 6;
+    }
+
+    #game .paralaxbeam1 {
+      width: 40px;
+      background: #35353D;
+    }
+
+    #game .paralaxbeam2 {
+      width: 128px;
+      background: url('paralax-fg-crossbeams.png');
+    }
+
     #game .distance {
       position: absolute;
       top: 5px;
@@ -105,6 +122,7 @@
       <div id="game"></div>
     </div>
     <a href="#" onclick="if (game.paused()) { game.start(); this.innerHTML = 'Pause'; } else { game.stop(); this.innerHTML = 'Continue'; }; return false;">Pause</a>
+    <a href="#" onclick="game.initialize(); return false;">Restart</a>
   </div>
   <script type="text/javascript">
     var game = new Canabalt(document.getElementById('game'), {fps: 40}).start();

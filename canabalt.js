@@ -40,6 +40,7 @@ Canabalt.PARALAX_BG_2_TOP_OFFSET = '100px';
 Canabalt.PARALAX_BG_2_SPEED = 0.2;
 
 Canabalt.PARALAX_FG_SPEED = 3;
+Canabalt.PARALAX_FG_INITIAL_WAIT = 3000;
 
 Canabalt.SHAKE_START = 3000;
 Canabalt.SHAKE_AMPLITUDE = 20;
@@ -103,6 +104,9 @@ Canabalt.prototype.initialize = function() {
   }
   this.paralaxBg2Offset = 0;
 
+  this.removeParalaxBeam();
+  this.scheduleParalaxBeam(Canabalt.PARALAX_FG_INITIAL_WAIT);
+
   // Distance counter
   if (!this.distanceCounter) {
     this.distanceCounter = this.createDiv('distance');
@@ -122,10 +126,10 @@ Canabalt.prototype.initialize = function() {
   return this;
 };
 
-Canabalt.prototype.createDiv = function(className) {
+Canabalt.prototype.createDiv = function(className, skipInsert) {
   var div = document.createElement('div');
   div.className = className;
-  this.container.appendChild(div);
+  if (!skipInsert) this.container.appendChild(div);
   return div;
 };
 
@@ -214,6 +218,41 @@ Canabalt.prototype.endJump = function() {
   }
 };
 
+Canabalt.prototype.scheduleParalaxBeam = function(wait) {
+  var me = this;
+  this.paralaxBeamTimeout = setTimeout(function() { me.spawnParalaxBeam(); }, wait);
+};
+
+Canabalt.prototype.spawnParalaxBeam = function() {
+  // Choose one of two possible beam styles
+  var style = Math.round(1 + Math.random());
+
+  this.paralaxBeam = this.createDiv('paralaxbeam' + style, true);
+  this.paralaxBeamOffset = this.viewportWidth;
+  this.paralaxBeam.style.left = this.paralaxBeamOffset + 'px';
+
+  // Insert paralax element
+  this.container.appendChild(this.paralaxBeam);
+
+  // Now obtain its width
+  this.paralaxBeamWidth = this.paralaxBeam.offsetWidth;
+};
+
+Canabalt.prototype.removeParalaxBeam = function() {
+  if (this.paralaxBeam) {
+    this.container.removeChild(this.paralaxBeam);
+  }
+
+  if (this.paralaxBeamTimeout) {
+    clearTimeout(this.paralaxBeamTimeout);
+  }
+
+  this.paralaxBeam = null;
+  this.paralaxBeamWidth = null;
+  this.paralaxBeamOffset = null;
+  this.paralaxBeamTimeout = null;
+};
+
 Canabalt.prototype.shake = function(duration) {
   this.shakeDuration = duration;
 };
@@ -239,6 +278,10 @@ Canabalt.prototype.draw = function() {
   // Draw paralax
   this.paralaxBg1.style.backgroundPosition = String(Math.round(this.paralaxBg1Offset)) + 'px ' + Canabalt.PARALAX_BG_1_TOP_OFFSET;
   this.paralaxBg2.style.backgroundPosition = String(Math.round(this.paralaxBg2Offset)) + 'px ' + Canabalt.PARALAX_BG_2_TOP_OFFSET;
+
+  if (this.paralaxBeam) {
+    this.paralaxBeam.style.left = String(Math.round(this.paralaxBeamOffset)) + 'px';
+  }
 
   // Draw distance counter
   this.distanceCounter.innerHTML = String(Math.round(this.distance * Canabalt.DISTANCE_TO_METERS_COEFFICIENT)) + 'm';
@@ -293,6 +336,14 @@ Canabalt.prototype.cycle = function() {
   this.paralaxBg1Offset -= distance * Canabalt.PARALAX_BG_1_SPEED;
   this.paralaxBg2Offset -= distance * Canabalt.PARALAX_BG_2_SPEED;
 
+  if (this.paralaxBeam) {
+    this.paralaxBeamOffset -= distance * Canabalt.PARALAX_FG_SPEED;
+    if (this.paralaxBeamOffset <= -this.paralaxBeamWidth) {
+      this.removeParalaxBeam();
+      this.scheduleParalaxBeam(Math.round(Math.random() * (5000 / this.speed)))
+    }
+  }
+
   // Shake it baby
   if (this.shakeDuration) {
     this.shakeDuration -= elapsed;
@@ -322,9 +373,9 @@ Canabalt.Building = function(game, options) {
 
   this.type = Canabalt.Building.TYPE_NORMAL;
 
-  this.width = 300 + Math.random() * 1000;
-  this.height = 30 + Math.random() * 100;
-  this.gap = 100 + Math.random() * 100;
+  this.width = 300 + Math.round(Math.random() * 1000);
+  this.height = 30 + Math.round(Math.random() * 100);
+  this.gap = Math.round(this.game.speed * 300);
   this.totalWidth = this.width + this.gap;
 
   this.left = this.game.viewportWidth;
